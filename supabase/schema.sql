@@ -15,8 +15,22 @@ create table if not exists public.meters (
   cost_per_unit numeric not null default 0,
   -- Zählerart: consumption = Verbrauch/Kosten, feed_in = Einspeisung/Ertrag, info = nur Info (keine Kosten)
   kind          text not null default 'consumption' check (kind in ('consumption', 'feed_in', 'info')),
+  -- leitungsgebunden (Strom/Wasser): Kosten über Tarif. Sonst (Pellets o.ä.): Zukäufe + FIFO.
+  line_bound    boolean not null default true,
   created_at    timestamptz not null default now()
 );
+
+-- Zukäufe für nicht leitungsgebundene Zähler (z.B. Pellets): Menge + bezahlter Gesamtpreis.
+create table if not exists public.purchases (
+  id           uuid primary key default gen_random_uuid(),
+  meter_id     uuid not null references public.meters (id) on delete cascade,
+  quantity     numeric not null check (quantity > 0),
+  total_price  numeric not null default 0,
+  purchased_at timestamptz not null default now(),
+  created_at   timestamptz not null default now()
+);
+
+create index if not exists purchases_meter_id_idx on public.purchases (meter_id, purchased_at);
 
 create table if not exists public.readings (
   id          uuid primary key default gen_random_uuid(),
@@ -32,8 +46,9 @@ create index if not exists readings_meter_id_idx on public.readings (meter_id, r
 -- Row Level Security
 -- ---------------------------------------------------------------------------
 
-alter table public.meters   enable row level security;
-alter table public.readings enable row level security;
+alter table public.meters    enable row level security;
+alter table public.readings  enable row level security;
+alter table public.purchases enable row level security;
 
 -- meters: jeder User nur eigene Zähler
 drop policy if exists "meters_select_own" on public.meters;
@@ -77,4 +92,31 @@ drop policy if exists "readings_delete_own" on public.readings;
 create policy "readings_delete_own" on public.readings
   for delete using (
     exists (select 1 from public.meters m where m.id = readings.meter_id and m.user_id = auth.uid())
+  );
+
+-- purchases: Zugriff nur, wenn der zugehörige meter dem User gehört
+drop policy if exists "purchases_select_own" on public.purchases;
+create policy "purchases_select_own" on public.purchases
+  for select using (
+    exists (select 1 from public.meters m where m.id = purchases.meter_id and m.user_id = auth.uid())
+  );
+
+drop policy if exists "purchases_insert_own" on public.purchases;
+create policy "purchases_insert_own" on public.purchases
+  for insert with check (
+    exists (select 1 from public.meters m where m.id = purchases.meter_id and m.user_id = auth.uid())
+  );
+
+drop policy if exists "purchases_update_own" on public.purchases;
+create policy "purchases_update_own" on public.purchases
+  for update using (
+    exists (select 1 from public.meters m where m.id = purchases.meter_id and m.user_id = auth.uid())
+  ) with check (
+    exists (select 1 from public.meters m where m.id = purchases.meter_id and m.user_id = auth.uid())
+  );
+
+drop policy if exists "purchases_delete_own" on public.purchases;
+create policy "purchases_delete_own" on public.purchases
+  for delete using (
+    exists (select 1 from public.meters m where m.id = purchases.meter_id and m.user_id = auth.uid())
   );

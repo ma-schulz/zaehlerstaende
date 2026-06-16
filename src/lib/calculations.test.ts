@@ -1,12 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { analyze, intervalSeries, sortReadings, summarizeByUnit } from './calculations';
-import type { Meter, MeterKind, Reading } from '../types';
+import {
+  analyze,
+  analyzeMeter,
+  fifoStock,
+  intervalSeries,
+  sortReadings,
+  summarizeByUnit,
+} from './calculations';
+import type { Meter, MeterKind, Purchase, Reading } from '../types';
 
 function reading(value: number, reading_at: string, meter_id = 'm'): Reading {
   return { id: `${meter_id}-${reading_at}`, meter_id, value, reading_at, created_at: reading_at };
 }
 
-function meter(id: string, kind: MeterKind, cost: number, unit = 'kWh'): Meter {
+function purchase(quantity: number, total_price: number, purchased_at: string): Purchase {
+  return { id: purchased_at, meter_id: 'm', quantity, total_price, purchased_at, created_at: purchased_at };
+}
+
+function meter(id: string, kind: MeterKind, cost: number, unit = 'kWh', line_bound = true): Meter {
   return {
     id,
     user_id: 'u',
@@ -16,6 +27,7 @@ function meter(id: string, kind: MeterKind, cost: number, unit = 'kWh'): Meter {
     decimals: 1,
     cost_per_unit: cost,
     kind,
+    line_bound,
     created_at: '2024-01-01T00:00:00Z',
   };
 }
@@ -95,7 +107,7 @@ describe('summarizeByUnit', () => {
       ['info', span(0, 999, 'info')], // zählt nicht
     ]);
 
-    const [summary] = summarizeByUnit(meters, readings);
+    const [summary] = summarizeByUnit(meters, readings, new Map());
     expect(summary.unit).toBe('kWh');
     expect(summary.meterCount).toBe(2); // Info ausgeschlossen
     expect(summary.perYear).toBeCloseTo(365 - 146, 4);
@@ -108,8 +120,60 @@ describe('summarizeByUnit', () => {
       ['strom', span(0, 365, 'strom')],
       ['wasser', span(0, 365, 'wasser')],
     ]);
-    const result = summarizeByUnit(meters, readings);
+    const result = summarizeByUnit(meters, readings, new Map());
     expect(result.map((r) => r.unit)).toEqual(['kWh', 'm³']);
+  });
+});
+
+describe('fifoStock', () => {
+  it('charges consumption against purchases in chronological order', () => {
+    // Lot 1: 3 t @ 100/t, Lot 2: 2 t @ 200/t. Verbrauch 4 t.
+    const purchases = [
+      purchase(3, 300, '2024-01-01T00:00:00Z'), // 100/t
+      purchase(2, 400, '2024-03-01T00:00:00Z'), // 200/t
+    ];
+    const s = fifoStock(purchases, 4);
+    expect(s.totalPurchased).toBe(5);
+    expect(s.stock).toBe(1);
+    // 3 t aus Lot 1 (300) + 1 t aus Lot 2 (200) = 500
+    expect(s.fifoCost).toBeCloseTo(500, 6);
+    expect(s.avgUnitPrice).toBeCloseTo(125, 6);
+  });
+
+  it('only costs the available quantity when consumption exceeds purchases', () => {
+    const s = fifoStock([purchase(2, 200, '2024-01-01T00:00:00Z')], 5);
+    expect(s.fifoCost).toBeCloseTo(200, 6); // nur 2 t verrechenbar
+    expect(s.stock).toBe(-3);
+  });
+});
+
+describe('analyzeMeter', () => {
+  it('uses the tariff for line-bound meters and reports no stock', () => {
+    const m = meter('strom', 'consumption', 0.35, 'kWh', true);
+    const readings = [
+      reading(0, '2024-01-01T00:00:00Z', 'strom'),
+      reading(100, '2024-01-11T00:00:00Z', 'strom'), // 10/Tag
+    ];
+    const a = analyzeMeter(m, readings, []);
+    expect(a.stockInfo).toBeNull();
+    expect(a.costPerDay).toBeCloseTo(10 * 0.35, 6);
+  });
+
+  it('uses FIFO cost and stock for non-line-bound meters', () => {
+    const m = meter('pellets', 'consumption', 0, 't', false);
+    const readings = [
+      reading(0, '2024-01-01T00:00:00Z', 'pellets'),
+      reading(4, '2024-01-11T00:00:00Z', 'pellets'), // 4 t über 10 Tage
+    ];
+    const purchases = [
+      purchase(3, 300, '2024-01-01T00:00:00Z'), // 100/t
+      purchase(2, 400, '2024-01-05T00:00:00Z'), // 200/t
+    ];
+    const a = analyzeMeter(m, readings, purchases);
+    expect(a.stockInfo?.stock).toBe(1); // 5 gekauft − 4 verbraucht
+    expect(a.stockInfo?.fifoCost).toBeCloseTo(500, 6);
+    expect(a.costPerDay).toBeCloseTo(50, 6); // 500 / 10 Tage
+    expect(a.costPerYear).toBeCloseTo(50 * 365, 6);
   });
 });
 

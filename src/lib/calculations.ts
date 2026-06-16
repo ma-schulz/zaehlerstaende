@@ -1,4 +1,4 @@
-import type { Meter, Reading } from '../types';
+import type { Meter, Purchase, Reading } from '../types';
 
 export interface Analysis {
   /** Anzahl der Messwerte insgesamt. */
@@ -76,6 +76,83 @@ export function analyze(readings: Reading[], costPerUnit: number): Analysis {
   };
 }
 
+export interface StockInfo {
+  /** Summe aller Zukäufe (Menge). */
+  totalPurchased: number;
+  /** Verbrauchte Menge (aus den Ständen). */
+  totalConsumed: number;
+  /** Aktuell vorhandener Bestand: Zukäufe − Verbrauch. */
+  stock: number;
+  /** FIFO-Kosten der verbrauchten Menge. */
+  fifoCost: number;
+  /** Durchschnittspreis pro Einheit der bisher verbrauchten (verrechneten) Menge. */
+  avgUnitPrice: number;
+}
+
+/**
+ * Verteilt die verbrauchte Menge nach dem FIFO-Prinzip auf die Zukäufe:
+ * der älteste Zukauf wird zuerst mit dem Verbrauch verrechnet, dann der nächste usw.
+ * Jeder Zukauf bringt seinen eigenen Stückpreis (total_price / quantity) mit.
+ */
+export function fifoStock(purchases: Purchase[], totalConsumed: number): StockInfo {
+  const sorted = [...purchases].sort(
+    (a, b) => new Date(a.purchased_at).getTime() - new Date(b.purchased_at).getTime(),
+  );
+  const totalPurchased = sorted.reduce((sum, p) => sum + p.quantity, 0);
+
+  let remaining = totalConsumed;
+  let fifoCost = 0;
+  let costedQty = 0;
+  for (const lot of sorted) {
+    if (remaining <= 0) break;
+    const unitPrice = lot.quantity > 0 ? lot.total_price / lot.quantity : 0;
+    const take = Math.min(remaining, lot.quantity);
+    fifoCost += take * unitPrice;
+    costedQty += take;
+    remaining -= take;
+  }
+
+  return {
+    totalPurchased,
+    totalConsumed,
+    stock: totalPurchased - totalConsumed,
+    fifoCost,
+    avgUnitPrice: costedQty > 0 ? fifoCost / costedQty : 0,
+  };
+}
+
+export interface MeterAnalysis extends Analysis {
+  /** Bestands-/FIFO-Infos für nicht leitungsgebundene Zähler, sonst null. */
+  stockInfo: StockInfo | null;
+}
+
+/**
+ * Vollständige Auswertung eines Zählers inkl. Kosten:
+ * - leitungsgebunden: Kosten = Verbrauch × Tarif (cost_per_unit)
+ * - nicht leitungsgebunden: Kosten per FIFO aus den Zukäufen, plus aktueller Bestand
+ */
+export function analyzeMeter(
+  meter: Meter,
+  readings: Reading[],
+  purchases: Purchase[],
+): MeterAnalysis {
+  const base = analyze(readings, meter.cost_per_unit);
+
+  // Nur nicht leitungsgebundene Verbrauchszähler nutzen Zukäufe/FIFO.
+  if (meter.line_bound || meter.kind !== 'consumption') {
+    return { ...base, stockInfo: null };
+  }
+
+  const stockInfo = fifoStock(purchases, base.totalConsumption);
+  const costPerDay = base.days > 0 ? stockInfo.fifoCost / base.days : 0;
+  return {
+    ...base,
+    costPerDay,
+    costPerYear: costPerDay * 365,
+    stockInfo,
+  };
+}
+
 export interface UnitSummary {
   /** Einheit, über die summiert wird (z.B. "kWh"). */
   unit: string;
@@ -96,12 +173,17 @@ export interface UnitSummary {
 export function summarizeByUnit(
   meters: Meter[],
   readingsByMeter: Map<string, Reading[]>,
+  purchasesByMeter: Map<string, Purchase[]>,
 ): UnitSummary[] {
   const byUnit = new Map<string, UnitSummary>();
 
   for (const meter of meters) {
     if (meter.kind === 'info') continue;
-    const a = analyze(readingsByMeter.get(meter.id) ?? [], meter.cost_per_unit);
+    const a = analyzeMeter(
+      meter,
+      readingsByMeter.get(meter.id) ?? [],
+      purchasesByMeter.get(meter.id) ?? [],
+    );
     const sign = meter.kind === 'feed_in' ? -1 : 1;
 
     const entry =

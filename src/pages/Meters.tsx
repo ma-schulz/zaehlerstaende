@@ -114,10 +114,16 @@ export function Meters() {
                             Info
                           </Badge>
                         )}
+                        {meter.kind === 'consumption' && !meter.line_bound && (
+                          <Badge size="xs" variant="light" color="blue">
+                            Vorrat
+                          </Badge>
+                        )}
                       </Group>
                       <Text size="sm" c="dimmed">
                         {meter.unit} · {meter.decimals} NK
-                        {meter.kind !== 'info' &&
+                        {(meter.kind === 'feed_in' ||
+                          (meter.kind === 'consumption' && meter.line_bound)) &&
                           ` · ${formatCurrency(meter.cost_per_unit)}/${meter.unit}`}
                       </Text>
                     </div>

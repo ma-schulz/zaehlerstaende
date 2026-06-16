@@ -18,7 +18,8 @@ import { IconArrowLeft, IconListNumbers } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { useMeter } from '../hooks/useMeters';
 import { useReadings } from '../hooks/useReadings';
-import { analyze, intervalSeries } from '../lib/calculations';
+import { usePurchases } from '../hooks/usePurchases';
+import { analyzeMeter, intervalSeries } from '../lib/calculations';
 import { getMeterIcon } from '../lib/icons';
 import { formatCurrency, formatNumber, formatWithUnit, meterTerms } from '../lib/format';
 
@@ -40,6 +41,7 @@ export function Analysis() {
   const navigate = useNavigate();
   const meter = useMeter(id);
   const { data: readings, isLoading } = useReadings(id);
+  const { data: purchases } = usePurchases(id);
 
   if (!meter) {
     return (
@@ -51,7 +53,8 @@ export function Analysis() {
 
   const Icon = getMeterIcon(meter.icon);
   const t = meterTerms(meter.kind);
-  const a = analyze(readings ?? [], meter.cost_per_unit);
+  const a = analyzeMeter(meter, readings ?? [], purchases ?? []);
+  const stock = a.stockInfo;
   const series = intervalSeries(readings ?? []).map((p) => ({
     ...p,
     label: dayjs(p.date).format('DD.MM.YY'),
@@ -79,6 +82,25 @@ export function Analysis() {
           Stände
         </Button>
       </Group>
+
+      {stock && (
+        <SimpleGrid cols={{ base: 2, md: 3 }}>
+          <StatCard
+            label="Aktueller Bestand"
+            value={formatWithUnit(stock.stock, meter.decimals, meter.unit)}
+          />
+          <StatCard
+            label="Zugekauft gesamt"
+            value={formatWithUnit(stock.totalPurchased, meter.decimals, meter.unit)}
+          />
+          <StatCard
+            label="Ø Stückpreis"
+            value={
+              stock.avgUnitPrice > 0 ? `${formatCurrency(stock.avgUnitPrice)}/${meter.unit}` : '–'
+            }
+          />
+        </SimpleGrid>
+      )}
 
       {!enoughData ? (
         <Card withBorder p="xl">

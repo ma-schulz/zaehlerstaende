@@ -8,6 +8,10 @@ React + Vite + Mantine, Daten in Supabase, gehostet auf GitHub Pages.
 - **Zähler verwalten** – Name, Einheit, Icon, Nachkommastellen, Kosten pro Einheit.
   Drei Zählerarten: **Verbrauch** (Kosten), **Einspeisung** (Ertrag statt Kosten, z.B. PV)
   und **Info** (ohne Kosten).
+- **Leitungsgebunden vs. Vorrat** – leitungsgebundene Zähler (Strom/Wasser) rechnen Kosten
+  über den Tarif. Nicht leitungsgebundene Zähler (z.B. Pellets) erlauben zusätzlich **Zukäufe**;
+  die Kosten werden nach **FIFO** verrechnet und der aktuelle **Bestand** (Σ Zukäufe − Σ Verbrauch)
+  ausgewiesen.
 - **Zählerstände** – erfassen, bearbeiten, löschen (mit Datum & Uhrzeit, Dezimal-Validierung).
 - **Auswertung** – Verbrauch/Tag, Verbrauch/Jahr, Kosten/Tag, Kosten/Jahr; tabellarisch + Graphen.
   Der erste Stand gilt als Anfangsstand und zählt nicht als Verbrauch.

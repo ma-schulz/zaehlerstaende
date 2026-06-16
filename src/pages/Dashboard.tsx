@@ -4,30 +4,36 @@ import { IconPlus } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useMeters } from '../hooks/useMeters';
 import { useAllReadings } from '../hooks/useReadings';
+import { useAllPurchases } from '../hooks/usePurchases';
 import { summarizeByUnit } from '../lib/calculations';
 import { MeterSummaryCard } from '../components/MeterSummaryCard';
 import { UnitSummary } from '../components/UnitSummary';
-import type { Reading } from '../types';
+import type { Purchase, Reading } from '../types';
+
+/** Liste nach meter_id gruppieren. */
+function groupByMeter<T extends { meter_id: string }>(items: T[] | undefined): Map<string, T[]> {
+  const map = new Map<string, T[]>();
+  for (const item of items ?? []) {
+    const list = map.get(item.meter_id);
+    if (list) list.push(item);
+    else map.set(item.meter_id, [item]);
+  }
+  return map;
+}
 
 export function Dashboard() {
   const { data: meters, isLoading } = useMeters();
   const { data: allReadings } = useAllReadings();
+  const { data: allPurchases } = useAllPurchases();
   const navigate = useNavigate();
 
-  // Zählerstände einmalig nach Zähler gruppieren (eine Abfrage statt N).
-  const readingsByMeter = useMemo(() => {
-    const map = new Map<string, Reading[]>();
-    for (const r of allReadings ?? []) {
-      const list = map.get(r.meter_id);
-      if (list) list.push(r);
-      else map.set(r.meter_id, [r]);
-    }
-    return map;
-  }, [allReadings]);
+  // Stände und Zukäufe einmalig je Zähler gruppieren (je eine Abfrage statt N).
+  const readingsByMeter = useMemo(() => groupByMeter<Reading>(allReadings), [allReadings]);
+  const purchasesByMeter = useMemo(() => groupByMeter<Purchase>(allPurchases), [allPurchases]);
 
   const summaries = useMemo(
-    () => (meters ? summarizeByUnit(meters, readingsByMeter) : []),
-    [meters, readingsByMeter],
+    () => (meters ? summarizeByUnit(meters, readingsByMeter, purchasesByMeter) : []),
+    [meters, readingsByMeter, purchasesByMeter],
   );
 
   if (isLoading) {
@@ -65,6 +71,7 @@ export function Dashboard() {
                 key={meter.id}
                 meter={meter}
                 readings={readingsByMeter.get(meter.id) ?? []}
+                purchases={purchasesByMeter.get(meter.id) ?? []}
               />
             ))}
           </SimpleGrid>

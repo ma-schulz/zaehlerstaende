@@ -1,5 +1,15 @@
 import { useEffect } from 'react';
-import { Modal, TextInput, NumberInput, Button, Stack, Group, Input, SegmentedControl } from '@mantine/core';
+import {
+  Modal,
+  TextInput,
+  NumberInput,
+  Button,
+  Stack,
+  Group,
+  Input,
+  SegmentedControl,
+  Switch,
+} from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconPicker } from './IconPicker';
@@ -27,6 +37,7 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
       decimals: 2,
       cost_per_unit: 0,
       kind: 'consumption',
+      line_bound: true,
     },
     validate: {
       name: (v) => (v.trim() ? null : 'Name erforderlich'),
@@ -46,6 +57,7 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
         decimals: meter.decimals,
         cost_per_unit: meter.cost_per_unit,
         kind: meter.kind,
+        line_bound: meter.line_bound,
       });
     } else {
       form.reset();
@@ -54,8 +66,16 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
   }, [opened, meter]);
 
   const submit = form.onSubmit(async (raw) => {
-    // Info-Zähler haben keine Kosten – Betrag konsequent auf 0 setzen.
-    const values: MeterInput = { ...raw, cost_per_unit: raw.kind === 'info' ? 0 : raw.cost_per_unit };
+    // leitungsgebunden ist nur bei Verbrauchszählern relevant; sonst immer true.
+    const line_bound = raw.kind === 'consumption' ? raw.line_bound : true;
+    // Tarif (cost_per_unit) gilt für Einspeisung sowie leitungsgebundenen Verbrauch.
+    // Info-Zähler und nicht leitungsgebundene Zähler (Kosten via Zukäufe) haben hier 0.
+    const usesTariff = raw.kind === 'feed_in' || (raw.kind === 'consumption' && line_bound);
+    const values: MeterInput = {
+      ...raw,
+      line_bound,
+      cost_per_unit: usesTariff ? raw.cost_per_unit : 0,
+    };
     try {
       if (meter) {
         await update.mutateAsync({ id: meter.id, input: values });
@@ -104,7 +124,20 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
               ]}
             />
           </Input.Wrapper>
-          {form.values.kind !== 'info' && (
+          {form.values.kind === 'consumption' && (
+            <Switch
+              label="Leitungsgebunden"
+              description={
+                form.values.line_bound
+                  ? 'Strom/Wasser – Kosten über den Tarif (Preis pro Einheit).'
+                  : 'Vorrat (z.B. Pellets) – zusätzlich Zukäufe erfassbar, Kosten per FIFO.'
+              }
+              checked={form.values.line_bound}
+              onChange={(e) => form.setFieldValue('line_bound', e.currentTarget.checked)}
+            />
+          )}
+          {(form.values.kind === 'feed_in' ||
+            (form.values.kind === 'consumption' && form.values.line_bound)) && (
             <NumberInput
               label={`${meterTerms(form.values.kind).rate} pro Einheit (€)`}
               min={0}

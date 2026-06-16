@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { Card, Group, Text, ThemeIcon, Button, Stack, Divider } from '@mantine/core';
 import { IconPlus, IconChartLine } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { analyze } from '../lib/calculations';
+import { analyzeMeter } from '../lib/calculations';
 import { getMeterIcon } from '../lib/icons';
 import { formatCurrency, formatWithUnit, meterTerms } from '../lib/format';
 import { ReadingFormModal } from './ReadingFormModal';
-import type { Meter, Reading } from '../types';
+import type { Meter, Purchase, Reading } from '../types';
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -19,11 +19,17 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MeterSummaryCard({ meter, readings }: { meter: Meter; readings: Reading[] }) {
+interface Props {
+  meter: Meter;
+  readings: Reading[];
+  purchases: Purchase[];
+}
+
+export function MeterSummaryCard({ meter, readings, purchases }: Props) {
   const navigate = useNavigate();
   const [formOpen, setFormOpen] = useState(false);
 
-  const a = analyze(readings, meter.cost_per_unit);
+  const a = analyzeMeter(meter, readings, purchases);
   const Icon = getMeterIcon(meter.icon);
   const t = meterTerms(meter.kind);
   const hasData = a.count >= 2 && a.days > 0;
@@ -53,7 +59,12 @@ export function MeterSummaryCard({ meter, readings }: { meter: Meter; readings: 
           label={`${t.amount} / Tag`}
           value={hasData ? formatWithUnit(a.perDay, meter.decimals, meter.unit) : '–'}
         />
-        {t.hasMoney ? (
+        {a.stockInfo ? (
+          <Stat
+            label="Aktueller Bestand"
+            value={formatWithUnit(a.stockInfo.stock, meter.decimals, meter.unit)}
+          />
+        ) : t.hasMoney ? (
           <Stat label={`${t.money} / Jahr`} value={hasData ? formatCurrency(a.costPerYear) : '–'} />
         ) : (
           <Stat
