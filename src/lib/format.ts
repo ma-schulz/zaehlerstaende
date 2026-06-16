@@ -29,3 +29,15 @@ export function formatCurrency(value: number): string {
 export function formatWithUnit(value: number, decimals: number, unit: string): string {
   return `${formatNumber(value, decimals)} ${unit}`;
 }
+
+/** Bezeichnungen je nach Zählerart: Einspeisezähler erzeugt Ertrag statt Kosten. */
+export function meterTerms(isFeedIn: boolean) {
+  return {
+    /** Menge: Verbrauch bzw. Einspeisung. */
+    amount: isFeedIn ? 'Einspeisung' : 'Verbrauch',
+    /** Geld-Ergebnis: Kosten bzw. Ertrag. */
+    money: isFeedIn ? 'Ertrag' : 'Kosten',
+    /** Preis pro Einheit: Kosten bzw. Vergütung. */
+    rate: isFeedIn ? 'Vergütung' : 'Kosten',
+  };
+}

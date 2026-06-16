@@ -12,6 +12,7 @@ import {
   Stack,
   Center,
   Loader,
+  Badge,
 } from '@mantine/core';
 import {
   IconPlus,
@@ -101,7 +102,14 @@ export function Meters() {
                       <Icon size={24} />
                     </ThemeIcon>
                     <div>
-                      <Text fw={600}>{meter.name}</Text>
+                      <Group gap="xs" wrap="nowrap">
+                        <Text fw={600}>{meter.name}</Text>
+                        {meter.is_feed_in && (
+                          <Badge size="xs" variant="light" color="green">
+                            Einspeisung
+                          </Badge>
+                        )}
+                      </Group>
                       <Text size="sm" c="dimmed">
                         {meter.unit} · {meter.decimals} NK ·{' '}
                         {formatCurrency(meter.cost_per_unit)}/{meter.unit}

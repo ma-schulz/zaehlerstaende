@@ -13,8 +13,12 @@ create table if not exists public.meters (
   icon          text not null default 'gauge',
   decimals      integer not null default 2 check (decimals >= 0 and decimals <= 6),
   cost_per_unit numeric not null default 0,
+  is_feed_in    boolean not null default false, -- Einspeisezähler: Ertrag statt Kosten
   created_at    timestamptz not null default now()
 );
+
+-- Migration für bereits bestehende Datenbanken (idempotent):
+alter table public.meters add column if not exists is_feed_in boolean not null default false;
 
 create table if not exists public.readings (
   id          uuid primary key default gen_random_uuid(),

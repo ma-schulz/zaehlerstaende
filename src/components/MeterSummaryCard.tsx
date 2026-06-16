@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useReadings } from '../hooks/useReadings';
 import { analyze } from '../lib/calculations';
 import { getMeterIcon } from '../lib/icons';
-import { formatCurrency, formatWithUnit } from '../lib/format';
+import { formatCurrency, formatWithUnit, meterTerms } from '../lib/format';
 import { ReadingFormModal } from './ReadingFormModal';
 import type { Meter } from '../types';
 
@@ -27,6 +27,7 @@ export function MeterSummaryCard({ meter }: { meter: Meter }) {
 
   const a = analyze(readings ?? [], meter.cost_per_unit);
   const Icon = getMeterIcon(meter.icon);
+  const t = meterTerms(meter.is_feed_in);
   const hasData = a.count >= 2 && a.days > 0;
 
   return (
@@ -51,10 +52,10 @@ export function MeterSummaryCard({ meter }: { meter: Meter }) {
 
       <Group grow>
         <Stat
-          label="Verbrauch / Tag"
+          label={`${t.amount} / Tag`}
           value={hasData ? formatWithUnit(a.perDay, meter.decimals, meter.unit) : '–'}
         />
-        <Stat label="Kosten / Jahr" value={hasData ? formatCurrency(a.costPerYear) : '–'} />
+        <Stat label={`${t.money} / Jahr`} value={hasData ? formatCurrency(a.costPerYear) : '–'} />
       </Group>
 
       <Stack gap="xs" mt="md">

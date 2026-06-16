@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Modal, TextInput, NumberInput, Button, Stack, Group } from '@mantine/core';
+import { Modal, TextInput, NumberInput, Button, Stack, Group, Switch } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconPicker } from './IconPicker';
@@ -19,7 +19,14 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
   const update = useUpdateMeter();
 
   const form = useForm<MeterInput>({
-    initialValues: { name: '', unit: '', icon: DEFAULT_ICON, decimals: 2, cost_per_unit: 0 },
+    initialValues: {
+      name: '',
+      unit: '',
+      icon: DEFAULT_ICON,
+      decimals: 2,
+      cost_per_unit: 0,
+      is_feed_in: false,
+    },
     validate: {
       name: (v) => (v.trim() ? null : 'Name erforderlich'),
       unit: (v) => (v.trim() ? null : 'Einheit erforderlich'),
@@ -37,6 +44,7 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
         icon: meter.icon,
         decimals: meter.decimals,
         cost_per_unit: meter.cost_per_unit,
+        is_feed_in: meter.is_feed_in,
       });
     } else {
       form.reset();
@@ -71,8 +79,14 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
               {...form.getInputProps('decimals')}
             />
           </Group>
+          <Switch
+            label="Einspeisezähler (Ertrag statt Kosten)"
+            description="z.B. PV-Anlage – die Vergütung pro Einheit ergibt einen Ertrag."
+            checked={form.values.is_feed_in}
+            onChange={(e) => form.setFieldValue('is_feed_in', e.currentTarget.checked)}
+          />
           <NumberInput
-            label="Kosten pro Einheit (€)"
+            label={`${form.values.is_feed_in ? 'Vergütung' : 'Kosten'} pro Einheit (€)`}
             min={0}
             step={0.01}
             decimalScale={4}

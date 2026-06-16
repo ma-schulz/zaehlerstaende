@@ -6,6 +6,8 @@ export interface Meter {
   icon: string;
   decimals: number;
   cost_per_unit: number;
+  /** Einspeisezähler: cost_per_unit gilt als Vergütung, das Ergebnis ist ein Ertrag. */
+  is_feed_in: boolean;
   created_at: string;
 }
 
@@ -20,7 +22,7 @@ export interface Reading {
 /** Eingabe-Werte beim Anlegen/Bearbeiten eines Zählers. */
 export type MeterInput = Pick<
   Meter,
-  'name' | 'unit' | 'icon' | 'decimals' | 'cost_per_unit'
+  'name' | 'unit' | 'icon' | 'decimals' | 'cost_per_unit' | 'is_feed_in'
 >;
 
 /** Eingabe-Werte beim Anlegen/Bearbeiten eines Zählerstands. */

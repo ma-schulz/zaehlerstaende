@@ -20,7 +20,7 @@ import { useMeter } from '../hooks/useMeters';
 import { useReadings } from '../hooks/useReadings';
 import { analyze, intervalSeries } from '../lib/calculations';
 import { getMeterIcon } from '../lib/icons';
-import { formatCurrency, formatNumber, formatWithUnit } from '../lib/format';
+import { formatCurrency, formatNumber, formatWithUnit, meterTerms } from '../lib/format';
 
 function StatCard({ label, value }: { label: string; value: string }) {
   return (
@@ -50,6 +50,7 @@ export function Analysis() {
   }
 
   const Icon = getMeterIcon(meter.icon);
+  const t = meterTerms(meter.is_feed_in);
   const a = analyze(readings ?? [], meter.cost_per_unit);
   const series = intervalSeries(readings ?? []).map((p) => ({
     ...p,
@@ -89,10 +90,10 @@ export function Analysis() {
       ) : (
         <>
           <SimpleGrid cols={{ base: 2, md: 4 }}>
-            <StatCard label="Verbrauch / Tag" value={formatWithUnit(a.perDay, meter.decimals, meter.unit)} />
-            <StatCard label="Verbrauch / Jahr" value={formatWithUnit(a.perYear, meter.decimals, meter.unit)} />
-            <StatCard label="Kosten / Tag" value={formatCurrency(a.costPerDay)} />
-            <StatCard label="Kosten / Jahr" value={formatCurrency(a.costPerYear)} />
+            <StatCard label={`${t.amount} / Tag`} value={formatWithUnit(a.perDay, meter.decimals, meter.unit)} />
+            <StatCard label={`${t.amount} / Jahr`} value={formatWithUnit(a.perYear, meter.decimals, meter.unit)} />
+            <StatCard label={`${t.money} / Tag`} value={formatCurrency(a.costPerDay)} />
+            <StatCard label={`${t.money} / Jahr`} value={formatCurrency(a.costPerYear)} />
           </SimpleGrid>
 
           <Card withBorder>
@@ -116,11 +117,11 @@ export function Analysis() {
                   <Table.Td ta="right">{formatWithUnit(a.lastValue ?? 0, meter.decimals, meter.unit)}</Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td>Gesamtverbrauch</Table.Td>
+                  <Table.Td>Gesamt{t.amount.toLowerCase()}</Table.Td>
                   <Table.Td ta="right">{formatWithUnit(a.totalConsumption, meter.decimals, meter.unit)}</Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td>Verbrauch pro Tag</Table.Td>
+                  <Table.Td>{t.amount} pro Tag</Table.Td>
                   <Table.Td ta="right">{formatWithUnit(a.perDay, meter.decimals, meter.unit)}</Table.Td>
                 </Table.Tr>
                 <Table.Tr>
@@ -128,11 +129,11 @@ export function Analysis() {
                   <Table.Td ta="right">{formatWithUnit(a.perYear, meter.decimals, meter.unit)}</Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td>Kosten pro Tag</Table.Td>
+                  <Table.Td>{t.money} pro Tag</Table.Td>
                   <Table.Td ta="right">{formatCurrency(a.costPerDay)}</Table.Td>
                 </Table.Tr>
                 <Table.Tr>
-                  <Table.Td>Kosten pro Jahr</Table.Td>
+                  <Table.Td>{t.money} pro Jahr</Table.Td>
                   <Table.Td ta="right">{formatCurrency(a.costPerYear)}</Table.Td>
                 </Table.Tr>
               </Table.Tbody>
@@ -155,13 +156,13 @@ export function Analysis() {
 
           <Card withBorder>
             <Title order={5} mb="sm">
-              Verbrauch pro Tag (je Intervall)
+              {t.amount} pro Tag (je Intervall)
             </Title>
             <BarChart
               h={260}
               data={series.slice(1)}
               dataKey="label"
-              series={[{ name: 'perDay', label: `Verbrauch/Tag (${meter.unit})`, color: 'blue.5' }]}
+              series={[{ name: 'perDay', label: `${t.amount}/Tag (${meter.unit})`, color: 'blue.5' }]}
             />
           </Card>
         </>
