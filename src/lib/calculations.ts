@@ -1,4 +1,4 @@
-import type { Reading } from '../types';
+import type { Meter, Reading } from '../types';
 
 export interface Analysis {
   /** Anzahl der Messwerte insgesamt. */
@@ -74,6 +74,46 @@ export function analyze(readings: Reading[], costPerUnit: number): Analysis {
     costPerDay: perDay * costPerUnit,
     costPerYear: perYear * costPerUnit,
   };
+}
+
+export interface UnitSummary {
+  /** Einheit, über die summiert wird (z.B. "kWh"). */
+  unit: string;
+  /** Nachkommastellen zur Anzeige (vom ersten Zähler dieser Einheit). */
+  decimals: number;
+  /** Netto-Verbrauch pro Jahr: Summe Verbrauchszähler − Summe Einspeisezähler. */
+  perYear: number;
+  /** Netto-Kosten pro Jahr: Summe Kosten − Summe Erträge. */
+  costPerYear: number;
+  /** Anzahl beteiligter Zähler (Info-Zähler zählen nicht mit). */
+  meterCount: number;
+}
+
+/**
+ * Fasst alle Zähler je Einheit zusammen. Einspeisezähler (feed_in) werden vom
+ * Verbrauch und von den Kosten abgezogen; Info-Zähler bleiben unberücksichtigt.
+ */
+export function summarizeByUnit(
+  meters: Meter[],
+  readingsByMeter: Map<string, Reading[]>,
+): UnitSummary[] {
+  const byUnit = new Map<string, UnitSummary>();
+
+  for (const meter of meters) {
+    if (meter.kind === 'info') continue;
+    const a = analyze(readingsByMeter.get(meter.id) ?? [], meter.cost_per_unit);
+    const sign = meter.kind === 'feed_in' ? -1 : 1;
+
+    const entry =
+      byUnit.get(meter.unit) ??
+      { unit: meter.unit, decimals: meter.decimals, perYear: 0, costPerYear: 0, meterCount: 0 };
+    entry.perYear += sign * a.perYear;
+    entry.costPerYear += sign * a.costPerYear;
+    entry.meterCount += 1;
+    byUnit.set(meter.unit, entry);
+  }
+
+  return [...byUnit.values()].sort((a, b) => a.unit.localeCompare(b.unit));
 }
 
 export interface IntervalPoint {

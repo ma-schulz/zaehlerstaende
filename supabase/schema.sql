@@ -13,7 +13,8 @@ create table if not exists public.meters (
   icon          text not null default 'gauge',
   decimals      integer not null default 2 check (decimals >= 0 and decimals <= 6),
   cost_per_unit numeric not null default 0,
-  is_feed_in    boolean not null default false, -- Einspeisezähler: Ertrag statt Kosten
+  -- Zählerart: consumption = Verbrauch/Kosten, feed_in = Einspeisung/Ertrag, info = nur Info (keine Kosten)
+  kind          text not null default 'consumption' check (kind in ('consumption', 'feed_in', 'info')),
   created_at    timestamptz not null default now()
 );
 

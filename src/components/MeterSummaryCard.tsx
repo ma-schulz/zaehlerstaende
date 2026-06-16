@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { Card, Group, Text, ThemeIcon, Button, Stack, Divider } from '@mantine/core';
 import { IconPlus, IconChartLine } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
-import { useReadings } from '../hooks/useReadings';
 import { analyze } from '../lib/calculations';
 import { getMeterIcon } from '../lib/icons';
 import { formatCurrency, formatWithUnit, meterTerms } from '../lib/format';
 import { ReadingFormModal } from './ReadingFormModal';
-import type { Meter } from '../types';
+import type { Meter, Reading } from '../types';
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
@@ -20,14 +19,13 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-export function MeterSummaryCard({ meter }: { meter: Meter }) {
+export function MeterSummaryCard({ meter, readings }: { meter: Meter; readings: Reading[] }) {
   const navigate = useNavigate();
-  const { data: readings } = useReadings(meter.id);
   const [formOpen, setFormOpen] = useState(false);
 
-  const a = analyze(readings ?? [], meter.cost_per_unit);
+  const a = analyze(readings, meter.cost_per_unit);
   const Icon = getMeterIcon(meter.icon);
-  const t = meterTerms(meter.is_feed_in);
+  const t = meterTerms(meter.kind);
   const hasData = a.count >= 2 && a.days > 0;
 
   return (
@@ -55,7 +53,14 @@ export function MeterSummaryCard({ meter }: { meter: Meter }) {
           label={`${t.amount} / Tag`}
           value={hasData ? formatWithUnit(a.perDay, meter.decimals, meter.unit) : '–'}
         />
-        <Stat label={`${t.money} / Jahr`} value={hasData ? formatCurrency(a.costPerYear) : '–'} />
+        {t.hasMoney ? (
+          <Stat label={`${t.money} / Jahr`} value={hasData ? formatCurrency(a.costPerYear) : '–'} />
+        ) : (
+          <Stat
+            label={`${t.amount} / Jahr`}
+            value={hasData ? formatWithUnit(a.perYear, meter.decimals, meter.unit) : '–'}
+          />
+        )}
       </Group>
 
       <Stack gap="xs" mt="md">

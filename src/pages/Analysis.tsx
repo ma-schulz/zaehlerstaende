@@ -50,7 +50,7 @@ export function Analysis() {
   }
 
   const Icon = getMeterIcon(meter.icon);
-  const t = meterTerms(meter.is_feed_in);
+  const t = meterTerms(meter.kind);
   const a = analyze(readings ?? [], meter.cost_per_unit);
   const series = intervalSeries(readings ?? []).map((p) => ({
     ...p,
@@ -89,11 +89,15 @@ export function Analysis() {
         </Card>
       ) : (
         <>
-          <SimpleGrid cols={{ base: 2, md: 4 }}>
+          <SimpleGrid cols={{ base: 2, md: t.hasMoney ? 4 : 2 }}>
             <StatCard label={`${t.amount} / Tag`} value={formatWithUnit(a.perDay, meter.decimals, meter.unit)} />
             <StatCard label={`${t.amount} / Jahr`} value={formatWithUnit(a.perYear, meter.decimals, meter.unit)} />
-            <StatCard label={`${t.money} / Tag`} value={formatCurrency(a.costPerDay)} />
-            <StatCard label={`${t.money} / Jahr`} value={formatCurrency(a.costPerYear)} />
+            {t.hasMoney && (
+              <>
+                <StatCard label={`${t.money} / Tag`} value={formatCurrency(a.costPerDay)} />
+                <StatCard label={`${t.money} / Jahr`} value={formatCurrency(a.costPerYear)} />
+              </>
+            )}
           </SimpleGrid>
 
           <Card withBorder>
@@ -128,14 +132,18 @@ export function Analysis() {
                   <Table.Td>Voraussichtlich pro Jahr</Table.Td>
                   <Table.Td ta="right">{formatWithUnit(a.perYear, meter.decimals, meter.unit)}</Table.Td>
                 </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>{t.money} pro Tag</Table.Td>
-                  <Table.Td ta="right">{formatCurrency(a.costPerDay)}</Table.Td>
-                </Table.Tr>
-                <Table.Tr>
-                  <Table.Td>{t.money} pro Jahr</Table.Td>
-                  <Table.Td ta="right">{formatCurrency(a.costPerYear)}</Table.Td>
-                </Table.Tr>
+                {t.hasMoney && (
+                  <>
+                    <Table.Tr>
+                      <Table.Td>{t.money} pro Tag</Table.Td>
+                      <Table.Td ta="right">{formatCurrency(a.costPerDay)}</Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Td>{t.money} pro Jahr</Table.Td>
+                      <Table.Td ta="right">{formatCurrency(a.costPerYear)}</Table.Td>
+                    </Table.Tr>
+                  </>
+                )}
               </Table.Tbody>
             </Table>
           </Card>

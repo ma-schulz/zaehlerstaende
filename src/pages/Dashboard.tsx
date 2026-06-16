@@ -1,12 +1,34 @@
+import { useMemo } from 'react';
 import { Title, Group, Button, SimpleGrid, Card, Text, Stack, Center, Loader } from '@mantine/core';
 import { IconPlus } from '@tabler/icons-react';
 import { useNavigate } from 'react-router-dom';
 import { useMeters } from '../hooks/useMeters';
+import { useAllReadings } from '../hooks/useReadings';
+import { summarizeByUnit } from '../lib/calculations';
 import { MeterSummaryCard } from '../components/MeterSummaryCard';
+import { UnitSummary } from '../components/UnitSummary';
+import type { Reading } from '../types';
 
 export function Dashboard() {
   const { data: meters, isLoading } = useMeters();
+  const { data: allReadings } = useAllReadings();
   const navigate = useNavigate();
+
+  // Zählerstände einmalig nach Zähler gruppieren (eine Abfrage statt N).
+  const readingsByMeter = useMemo(() => {
+    const map = new Map<string, Reading[]>();
+    for (const r of allReadings ?? []) {
+      const list = map.get(r.meter_id);
+      if (list) list.push(r);
+      else map.set(r.meter_id, [r]);
+    }
+    return map;
+  }, [allReadings]);
+
+  const summaries = useMemo(
+    () => (meters ? summarizeByUnit(meters, readingsByMeter) : []),
+    [meters, readingsByMeter],
+  );
 
   if (isLoading) {
     return (
@@ -35,11 +57,18 @@ export function Dashboard() {
           </Stack>
         </Card>
       ) : (
-        <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
-          {meters.map((meter) => (
-            <MeterSummaryCard key={meter.id} meter={meter} />
-          ))}
-        </SimpleGrid>
+        <>
+          <UnitSummary summaries={summaries} />
+          <SimpleGrid cols={{ base: 1, sm: 2, lg: 3 }}>
+            {meters.map((meter) => (
+              <MeterSummaryCard
+                key={meter.id}
+                meter={meter}
+                readings={readingsByMeter.get(meter.id) ?? []}
+              />
+            ))}
+          </SimpleGrid>
+        </>
       )}
     </Stack>
   );

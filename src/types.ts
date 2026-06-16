@@ -1,3 +1,11 @@
+/**
+ * Zählerart:
+ * - `consumption`: normaler Verbrauchszähler (Kosten)
+ * - `feed_in`: Einspeisezähler – cost_per_unit gilt als Vergütung, Ergebnis ist ein Ertrag
+ * - `info`: reiner Info-Zähler ohne Kosten
+ */
+export type MeterKind = 'consumption' | 'feed_in' | 'info';
+
 export interface Meter {
   id: string;
   user_id: string;
@@ -6,8 +14,7 @@ export interface Meter {
   icon: string;
   decimals: number;
   cost_per_unit: number;
-  /** Einspeisezähler: cost_per_unit gilt als Vergütung, das Ergebnis ist ein Ertrag. */
-  is_feed_in: boolean;
+  kind: MeterKind;
   created_at: string;
 }
 
@@ -22,7 +29,7 @@ export interface Reading {
 /** Eingabe-Werte beim Anlegen/Bearbeiten eines Zählers. */
 export type MeterInput = Pick<
   Meter,
-  'name' | 'unit' | 'icon' | 'decimals' | 'cost_per_unit' | 'is_feed_in'
+  'name' | 'unit' | 'icon' | 'decimals' | 'cost_per_unit' | 'kind'
 >;
 
 /** Eingabe-Werte beim Anlegen/Bearbeiten eines Zählerstands. */

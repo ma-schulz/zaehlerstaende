@@ -30,14 +30,16 @@ export function formatWithUnit(value: number, decimals: number, unit: string): s
   return `${formatNumber(value, decimals)} ${unit}`;
 }
 
-/** Bezeichnungen je nach Zählerart: Einspeisezähler erzeugt Ertrag statt Kosten. */
-export function meterTerms(isFeedIn: boolean) {
-  return {
-    /** Menge: Verbrauch bzw. Einspeisung. */
-    amount: isFeedIn ? 'Einspeisung' : 'Verbrauch',
-    /** Geld-Ergebnis: Kosten bzw. Ertrag. */
-    money: isFeedIn ? 'Ertrag' : 'Kosten',
-    /** Preis pro Einheit: Kosten bzw. Vergütung. */
-    rate: isFeedIn ? 'Vergütung' : 'Kosten',
-  };
+import type { MeterKind } from '../types';
+
+/** Bezeichnungen je nach Zählerart (Verbrauch/Kosten, Einspeisung/Ertrag oder reine Info). */
+export function meterTerms(kind: MeterKind) {
+  switch (kind) {
+    case 'feed_in':
+      return { amount: 'Einspeisung', money: 'Ertrag', rate: 'Vergütung', hasMoney: true };
+    case 'info':
+      return { amount: 'Verbrauch', money: '', rate: '', hasMoney: false };
+    default:
+      return { amount: 'Verbrauch', money: 'Kosten', rate: 'Kosten', hasMoney: true };
+  }
 }

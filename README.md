@@ -6,10 +6,13 @@ React + Vite + Mantine, Daten in Supabase, gehostet auf GitHub Pages.
 ## Funktionen
 
 - **Zähler verwalten** – Name, Einheit, Icon, Nachkommastellen, Kosten pro Einheit.
+  Drei Zählerarten: **Verbrauch** (Kosten), **Einspeisung** (Ertrag statt Kosten, z.B. PV)
+  und **Info** (ohne Kosten).
 - **Zählerstände** – erfassen, bearbeiten, löschen (mit Datum & Uhrzeit, Dezimal-Validierung).
 - **Auswertung** – Verbrauch/Tag, Verbrauch/Jahr, Kosten/Tag, Kosten/Jahr; tabellarisch + Graphen.
   Der erste Stand gilt als Anfangsstand und zählt nicht als Verbrauch.
-- **Dashboard** – Kurzübersicht je Zähler + Schnellzugriff zur Eingabe.
+- **Dashboard** – Summenzeile je Einheit (Verbrauch & Kosten, Einspeisung abgezogen, Info-Zähler
+  ausgenommen), Kurzübersicht je Zähler + Schnellzugriff zur Eingabe.
 - **PWA** – installierbar auf dem Handy, dunkles Farbschema.
 
 ## Architektur

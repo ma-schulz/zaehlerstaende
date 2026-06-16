@@ -1,11 +1,12 @@
 import { useEffect } from 'react';
-import { Modal, TextInput, NumberInput, Button, Stack, Group, Switch } from '@mantine/core';
+import { Modal, TextInput, NumberInput, Button, Stack, Group, Input, SegmentedControl } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
 import { IconPicker } from './IconPicker';
 import { DEFAULT_ICON } from '../lib/icons';
+import { meterTerms } from '../lib/format';
 import { useCreateMeter, useUpdateMeter } from '../hooks/useMeters';
-import type { Meter, MeterInput } from '../types';
+import type { Meter, MeterInput, MeterKind } from '../types';
 
 interface Props {
   opened: boolean;
@@ -25,7 +26,7 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
       icon: DEFAULT_ICON,
       decimals: 2,
       cost_per_unit: 0,
-      is_feed_in: false,
+      kind: 'consumption',
     },
     validate: {
       name: (v) => (v.trim() ? null : 'Name erforderlich'),
@@ -44,7 +45,7 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
         icon: meter.icon,
         decimals: meter.decimals,
         cost_per_unit: meter.cost_per_unit,
-        is_feed_in: meter.is_feed_in,
+        kind: meter.kind,
       });
     } else {
       form.reset();
@@ -52,7 +53,9 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opened, meter]);
 
-  const submit = form.onSubmit(async (values) => {
+  const submit = form.onSubmit(async (raw) => {
+    // Info-Zähler haben keine Kosten – Betrag konsequent auf 0 setzen.
+    const values: MeterInput = { ...raw, cost_per_unit: raw.kind === 'info' ? 0 : raw.cost_per_unit };
     try {
       if (meter) {
         await update.mutateAsync({ id: meter.id, input: values });
@@ -79,19 +82,37 @@ export function MeterFormModal({ opened, onClose, meter }: Props) {
               {...form.getInputProps('decimals')}
             />
           </Group>
-          <Switch
-            label="Einspeisezähler (Ertrag statt Kosten)"
-            description="z.B. PV-Anlage – die Vergütung pro Einheit ergibt einen Ertrag."
-            checked={form.values.is_feed_in}
-            onChange={(e) => form.setFieldValue('is_feed_in', e.currentTarget.checked)}
-          />
-          <NumberInput
-            label={`${form.values.is_feed_in ? 'Vergütung' : 'Kosten'} pro Einheit (€)`}
-            min={0}
-            step={0.01}
-            decimalScale={4}
-            {...form.getInputProps('cost_per_unit')}
-          />
+          <Input.Wrapper
+            label="Zählerart"
+            description={
+              form.values.kind === 'feed_in'
+                ? 'Einspeisung (z.B. PV) – die Vergütung pro Einheit ergibt einen Ertrag.'
+                : form.values.kind === 'info'
+                  ? 'Reiner Info-Zähler ohne Kosten – zählt nicht in die Dashboard-Summe.'
+                  : 'Normaler Verbrauchszähler mit Kosten.'
+            }
+          >
+            <SegmentedControl
+              fullWidth
+              mt={4}
+              value={form.values.kind}
+              onChange={(v) => form.setFieldValue('kind', v as MeterKind)}
+              data={[
+                { label: 'Verbrauch', value: 'consumption' },
+                { label: 'Einspeisung', value: 'feed_in' },
+                { label: 'Info', value: 'info' },
+              ]}
+            />
+          </Input.Wrapper>
+          {form.values.kind !== 'info' && (
+            <NumberInput
+              label={`${meterTerms(form.values.kind).rate} pro Einheit (€)`}
+              min={0}
+              step={0.01}
+              decimalScale={4}
+              {...form.getInputProps('cost_per_unit')}
+            />
+          )}
           <IconPicker value={form.values.icon} onChange={(k) => form.setFieldValue('icon', k)} />
           <Group justify="flex-end" mt="sm">
             <Button variant="default" onClick={onClose}>

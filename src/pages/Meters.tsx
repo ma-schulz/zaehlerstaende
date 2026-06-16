@@ -104,15 +104,21 @@ export function Meters() {
                     <div>
                       <Group gap="xs" wrap="nowrap">
                         <Text fw={600}>{meter.name}</Text>
-                        {meter.is_feed_in && (
+                        {meter.kind === 'feed_in' && (
                           <Badge size="xs" variant="light" color="green">
                             Einspeisung
                           </Badge>
                         )}
+                        {meter.kind === 'info' && (
+                          <Badge size="xs" variant="light" color="gray">
+                            Info
+                          </Badge>
+                        )}
                       </Group>
                       <Text size="sm" c="dimmed">
-                        {meter.unit} · {meter.decimals} NK ·{' '}
-                        {formatCurrency(meter.cost_per_unit)}/{meter.unit}
+                        {meter.unit} · {meter.decimals} NK
+                        {meter.kind !== 'info' &&
+                          ` · ${formatCurrency(meter.cost_per_unit)}/${meter.unit}`}
                       </Text>
                     </div>
                   </Group>

@@ -20,6 +20,21 @@ export function useReadings(meterId: string | undefined) {
   });
 }
 
+/** Alle Zählerstände des Nutzers in einer Abfrage (für die Dashboard-Summe). */
+export function useAllReadings() {
+  return useQuery({
+    queryKey: ['readings', 'all'],
+    queryFn: async (): Promise<Reading[]> => {
+      const { data, error } = await supabase
+        .from('readings')
+        .select('*')
+        .order('reading_at', { ascending: true });
+      if (error) throw error;
+      return data as Reading[];
+    },
+  });
+}
+
 export function useCreateReading(meterId: string) {
   const qc = useQueryClient();
   return useMutation({
@@ -32,11 +47,12 @@ export function useCreateReading(meterId: string) {
       if (error) throw error;
       return data as Reading;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(meterId) }),
+    // ['readings'] als Prefix invalidiert sowohl die Einzel- als auch die Gesamtabfrage.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['readings'] }),
   });
 }
 
-export function useUpdateReading(meterId: string) {
+export function useUpdateReading(_meterId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async ({ id, input }: { id: string; input: ReadingInput }): Promise<Reading> => {
@@ -49,17 +65,19 @@ export function useUpdateReading(meterId: string) {
       if (error) throw error;
       return data as Reading;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(meterId) }),
+    // ['readings'] als Prefix invalidiert sowohl die Einzel- als auch die Gesamtabfrage.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['readings'] }),
   });
 }
 
-export function useDeleteReading(meterId: string) {
+export function useDeleteReading(_meterId: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (id: string): Promise<void> => {
       const { error } = await supabase.from('readings').delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: key(meterId) }),
+    // ['readings'] als Prefix invalidiert sowohl die Einzel- als auch die Gesamtabfrage.
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['readings'] }),
   });
 }

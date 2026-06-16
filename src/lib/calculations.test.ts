@@ -1,9 +1,23 @@
 import { describe, it, expect } from 'vitest';
-import { analyze, intervalSeries, sortReadings } from './calculations';
-import type { Reading } from '../types';
+import { analyze, intervalSeries, sortReadings, summarizeByUnit } from './calculations';
+import type { Meter, MeterKind, Reading } from '../types';
 
-function reading(value: number, reading_at: string): Reading {
-  return { id: reading_at, meter_id: 'm', value, reading_at, created_at: reading_at };
+function reading(value: number, reading_at: string, meter_id = 'm'): Reading {
+  return { id: `${meter_id}-${reading_at}`, meter_id, value, reading_at, created_at: reading_at };
+}
+
+function meter(id: string, kind: MeterKind, cost: number, unit = 'kWh'): Meter {
+  return {
+    id,
+    user_id: 'u',
+    name: id,
+    unit,
+    icon: 'gauge',
+    decimals: 1,
+    cost_per_unit: cost,
+    kind,
+    created_at: '2024-01-01T00:00:00Z',
+  };
 }
 
 describe('sortReadings', () => {
@@ -59,6 +73,43 @@ describe('analyze', () => {
     const a = analyze(readings, 1);
     expect(a.totalConsumption).toBe(50);
     expect(a.perDay).toBe(0);
+  });
+});
+
+describe('summarizeByUnit', () => {
+  // Über 365 Tage je 0->365 = 1 Einheit/Tag => perYear = 365.
+  const span = (start: number, end: number, id: string) => [
+    reading(start, '2024-01-01T00:00:00Z', id),
+    reading(end, '2024-12-31T00:00:00Z', id),
+  ];
+
+  it('subtracts feed-in meters and ignores info meters per unit', () => {
+    const meters = [
+      meter('consume', 'consumption', 0.35),
+      meter('pv', 'feed_in', 0.08),
+      meter('info', 'info', 0),
+    ];
+    const readings = new Map<string, Reading[]>([
+      ['consume', span(0, 365, 'consume')], // 365 kWh/Jahr
+      ['pv', span(0, 146, 'pv')], // 146 kWh/Jahr eingespeist
+      ['info', span(0, 999, 'info')], // zählt nicht
+    ]);
+
+    const [summary] = summarizeByUnit(meters, readings);
+    expect(summary.unit).toBe('kWh');
+    expect(summary.meterCount).toBe(2); // Info ausgeschlossen
+    expect(summary.perYear).toBeCloseTo(365 - 146, 4);
+    expect(summary.costPerYear).toBeCloseTo(365 * 0.35 - 146 * 0.08, 4);
+  });
+
+  it('groups separate units independently', () => {
+    const meters = [meter('strom', 'consumption', 0.35, 'kWh'), meter('wasser', 'consumption', 2, 'm³')];
+    const readings = new Map<string, Reading[]>([
+      ['strom', span(0, 365, 'strom')],
+      ['wasser', span(0, 365, 'wasser')],
+    ]);
+    const result = summarizeByUnit(meters, readings);
+    expect(result.map((r) => r.unit)).toEqual(['kWh', 'm³']);
   });
 });
 
