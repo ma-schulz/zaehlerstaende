@@ -3,7 +3,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// GitHub-Pages-Projektpfad: https://<user>.github.io/zaehlerstand/
+// GitHub-Pages-Projektpfad: https://<user>.github.io/zaehlerstaende/
 const base = '/zaehlerstaende/';
 
 export default defineConfig({

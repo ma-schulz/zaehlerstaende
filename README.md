@@ -48,10 +48,10 @@ npm run build   # Type-Check + Produktions-Build
    (*Settings → Secrets and variables → Actions*).
 2. *Settings → Pages → Source* auf **GitHub Actions** stellen.
 3. Push auf `main` → Workflow `.github/workflows/deploy.yml` baut & deployt.
-4. Erreichbar unter `https://<user>.github.io/zaehlerstand/`.
+4. Erreichbar unter `https://<user>.github.io/zaehlerstaende/`.
 
-> Heißt das Repo nicht `zaehlerstand`, den Wert `base` in `vite.config.ts` sowie die
-> Icon-/Manifest-Pfade entsprechend anpassen.
+> Heißt das Repo nicht `zaehlerstaende`, nur den Wert `base` in `vite.config.ts` anpassen –
+> Icon- und Manifest-Pfade folgen automatisch der `base`.
 
 ## PWA-Icons neu erzeugen
 
