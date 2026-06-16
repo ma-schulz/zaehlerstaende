@@ -17,9 +17,6 @@ create table if not exists public.meters (
   created_at    timestamptz not null default now()
 );
 
--- Migration für bereits bestehende Datenbanken (idempotent):
-alter table public.meters add column if not exists is_feed_in boolean not null default false;
-
 create table if not exists public.readings (
   id          uuid primary key default gen_random_uuid(),
   meter_id    uuid not null references public.meters (id) on delete cascade,

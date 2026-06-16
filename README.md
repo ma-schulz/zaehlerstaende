@@ -24,8 +24,14 @@ erzwungen (jeder Nutzer sieht nur eigene Daten).
 ### 1. Supabase
 
 1. Projekt auf [supabase.com](https://supabase.com) anlegen.
-2. Im SQL-Editor `supabase/schema.sql` ausführen (Tabellen + RLS-Policies).
+2. Im SQL-Editor `supabase/schema.sql` ausführen (Tabellen + RLS-Policies) – das ist der
+   vollständige Soll-Zustand für eine **frische** Datenbank.
 3. Unter *Project Settings → API* `Project URL` und `anon public key` notieren.
+
+> **Bestehende Datenbank aktualisieren:** Spätere Schema-Änderungen liegen als
+> nummerierte Deltas unter `supabase/migrations/` (z.B. `0001_add_is_feed_in.sql`).
+> Diese im SQL-Editor ausführen, wenn die DB bereits eingerichtet war. Die Statements
+> sind idempotent.
 
 ### 2. Lokal entwickeln
 
